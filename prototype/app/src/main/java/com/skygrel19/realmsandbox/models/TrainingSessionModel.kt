@@ -1,6 +1,7 @@
 package com.skygrel19.realmsandbox.models
 
 import com.skygrel19.realmsandbox.IRealmModel
+import com.skygrel19.realmsandbox.exceptions.WrongFormatException
 import io.realm.kotlin.ext.realmListOf
 import io.realm.kotlin.types.RealmList
 import io.realm.kotlin.types.RealmObject
@@ -24,15 +25,23 @@ open class TrainingSessionModel : RealmObject, IRealmModel<TrainingSessionModel>
         return "TrainingSessionModel(sessionId=$sessionId, userId=$userId, startTime=$startTime, endTime=$endTime, totalDistance=$totalDistance, route=$route, records=$records, pausedTime=$pausedTime)"
     }
 
+    override fun hint(): String {
+        return "userId: ObjectId, startTime: Long, endTime: Long, totalDistance: Double, pausedTime: Long"
+    }
+
     override fun create_from_text(text: String): TrainingSessionModel {
-        val parts = text.split(",")
-        val session = TrainingSessionModel().apply {
-            userId = ObjectId(parts[0])
-            startTime = parts[1].toLong()
-            endTime = parts[2].toLong()
-            totalDistance = parts[3].toDouble()
-            pausedTime = parts[4].toLong()
+        try {
+            val parts = text.split(",").map { it.trim() }
+            val session = TrainingSessionModel().apply {
+                userId = ObjectId(parts[0])
+                startTime = parts[1].toLong()
+                endTime = parts[2].toLong()
+                totalDistance = parts[3].toDouble()
+                pausedTime = parts[4].toLong()
+            }
+            return session
+        } catch (e: Exception) {
+            throw WrongFormatException(this.hint())
         }
-        return session
     }
 }

@@ -1,6 +1,7 @@
 package com.skygrel19.realmsandbox.models
 
 import com.skygrel19.realmsandbox.IRealmModel
+import com.skygrel19.realmsandbox.exceptions.WrongFormatException
 import io.realm.kotlin.types.RealmObject
 import io.realm.kotlin.types.annotations.PrimaryKey
 import org.mongodb.kbson.ObjectId
@@ -18,14 +19,23 @@ open class TrainingStatsModel : RealmObject, IRealmModel<TrainingStatsModel> {
         return "TrainingStatsModel(statsId=$statsId, sessionId=$sessionId, averageSpeed=$averageSpeed, maxSpeed=$maxSpeed, averagePace=$averagePace, caloriesBurned=$caloriesBurned)"
     }
 
+    override fun hint(): String {
+        return "averageSpeed: Double, maxSpeed: Double, averagePace: Double, caloriesBurned: Int"
+    }
+
     override fun create_from_text(text: String): TrainingStatsModel {
-        val parts = text.split(",")
-        val stats = TrainingStatsModel().apply {
-            averageSpeed = parts[0].toDouble()
-            maxSpeed = parts[1].toDouble()
-            averagePace = parts[2].toDouble()
-            caloriesBurned = parts[3].toInt()
+        try {
+            val parts = text.split(",").map { it.trim() }
+            val stats = TrainingStatsModel().apply {
+                sessionId = ObjectId(parts[0])
+                averageSpeed = parts[1].toDouble()
+                maxSpeed = parts[2].toDouble()
+                averagePace = parts[3].toDouble()
+                caloriesBurned = parts[4].toInt()
+            }
+            return stats
+        } catch (e: Exception) {
+            throw WrongFormatException(this.hint())
         }
-        return stats
     }
 }

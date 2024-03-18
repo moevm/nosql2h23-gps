@@ -3,12 +3,22 @@ package com.skygrel19.realmsandbox
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -17,7 +27,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.skygrel19.realmsandbox.exceptions.WrongFormatException
 import com.skygrel19.realmsandbox.models.DistanceRecord
 import com.skygrel19.realmsandbox.models.LocationModel
 import com.skygrel19.realmsandbox.models.RecordModel
@@ -52,10 +65,16 @@ fun <T: RealmObject> DisplayModelData(realm: Realm, modelClass: IRealmModel<T>, 
     val results = realm.query(clazz).find()
 
 
-    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+    if (results.isEmpty()) {
+        Text("No data found for ${modelClass.name()}")
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface).heightIn(max = 400.dp)) {
         items(results.size) { index ->
             val model = results[index]
-            Text(model.toString())
+            TextField(value = model.toString(), onValueChange = {}, readOnly = true)
+            // really nice line to separate items
+            Box(modifier = Modifier.size(400.dp, 1.dp).border(1.dp, MaterialTheme.colorScheme.onSurface))
         }
     }
 }
@@ -70,27 +89,66 @@ fun App(realm: Realm) {
 
     var generation by remember { mutableIntStateOf(0) }
 
-    Column {
-        Text("Realm Sandbox")
-        Text("Selected Model: $selectedModelClassName")
-        DropdownMenuExample(realm, selectedModelClass, onModelClassSelection = { selectedModelClass = it })
+    // exception dialog stuff
+    var dialogVisible by remember { mutableStateOf(false) }
+    var exceptionMessage by remember { mutableStateOf("") }
 
+    if (dialogVisible) {
+        AlertDialog(
+            onDismissRequest = { dialogVisible = false },
+            title = { Text("An error occurred") },
+            text = { Text(exceptionMessage) },
+            confirmButton = {
+                Button(onClick = { dialogVisible = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    Column (Modifier.padding(10.dp)) {
+        Text("App db prototype", Modifier.align(Alignment.CenterHorizontally), style = MaterialTheme.typography.headlineLarge)
+        Row {
+            Text("Selected Model: $selectedModelClassName", Modifier.align(Alignment.CenterVertically))
+            Box(modifier = Modifier.weight(1f))
+            DropdownMenuExample(selectedModelClass, onModelClassSelection = { selectedModelClass = it })
+        }
+
+        // Table
         DisplayModelData(realm, selectedModelClass, generation)
 
-        TextField(value = text, onValueChange = { text = it })
+        Box(modifier = Modifier.weight(1f))
+
+        // Insertion form
+        Text(text = "Insert New Entry", Modifier.align(Alignment.CenterHorizontally), style = MaterialTheme.typography.headlineMedium)
+        Text("Enter comma separated values for the model", Modifier.align(Alignment.CenterHorizontally))
+        Text("Hint: ${selectedModelClass.hint()}", Modifier.align(Alignment.CenterHorizontally))
+        TextField(value = text, onValueChange = { text = it }, label = { Text("Enter comma separated values") },
+            modifier = Modifier.padding(10.dp).align(Alignment.CenterHorizontally).width(400.dp))
         Button(onClick = {
             realm.writeBlocking {
-                copyToRealm(selectedModelClass.create_from_text(text))
+                try {
+                    copyToRealm(selectedModelClass.create_from_text(text))
+                } catch (e: Exception) {
+                    // Set the exception message and show the dialog
+                    exceptionMessage = if (e is WrongFormatException) {
+                        "Wrong format. Hint: ${selectedModelClass.hint()}"
+                    } else {
+                        e.toString()
+                    }
+                    dialogVisible = true
+                }
             }
             generation++
-        }) {
+        }, Modifier.align(Alignment.CenterHorizontally)) {
             Text("Add New Entry")
         }
     }
 }
 
+
 @Composable
-fun <T: RealmObject> DropdownMenuExample(realm: Realm, selectedModelClass: IRealmModel<T>, onModelClassSelection: (IRealmModel<T>) -> Unit) {
+fun <T: RealmObject> DropdownMenuExample(selectedModelClass: IRealmModel<T>, onModelClassSelection: (IRealmModel<T>) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
 
 

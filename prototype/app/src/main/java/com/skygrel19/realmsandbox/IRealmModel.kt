@@ -7,9 +7,11 @@ interface IRealmModel <T: RealmObject> {
     fun name(): String {
         return this::class.simpleName ?: "Unknown"
     }
+    fun hint(): String
     fun create_from_text(text: String): T
 
     fun as_class(): KClass<T> {
         return this::class as KClass<T>
     }
+
 }

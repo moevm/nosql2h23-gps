@@ -1,6 +1,7 @@
 package com.skygrel19.realmsandbox.models
 
 import com.skygrel19.realmsandbox.IRealmModel
+import com.skygrel19.realmsandbox.exceptions.WrongFormatException
 import io.realm.kotlin.types.RealmObject
 import io.realm.kotlin.types.annotations.PrimaryKey
 import org.mongodb.kbson.ObjectId
@@ -19,15 +20,21 @@ open class RecordModel : RealmObject, IRealmModel<RecordModel> {
         return "RecordModel(recordId=$recordId, distance=$distance, time=$time, sessionId=$sessionId, createdAt=$createdAt)"
     }
 
+    override fun hint(): String {
+        return "distance: Double, time: Long, sessionId: ObjectId, createdAt: Long"
+    }
     override fun create_from_text(text: String): RecordModel {
-        val parts = text.split(",")
-        val record = RecordModel().apply {
-            distance = parts[0].toDouble()
-            time = parts[1].toLong()
-            sessionId = ObjectId(parts[2])
-            createdAt = parts[3].toLong()
+        try {
+            val parts = text.split(",").map { it.trim() }
+            val record = RecordModel().apply {
+                distance = parts[0].toDouble()
+                time = parts[1].toLong()
+                sessionId = ObjectId(parts[2])
+                createdAt = parts[3].toLong()
+            }
+            return record
+        } catch (e: Exception) {
+            throw WrongFormatException(this.hint())
         }
-
-        return record
     }
 }
