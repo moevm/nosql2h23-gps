@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun <T: RealmObject> DisplayModelData(realm: Realm, modelClass: IRealmModel<T>) {
+fun <T: RealmObject> DisplayModelData(realm: Realm, modelClass: IRealmModel<T>, generation: Int) {
     val clazz = modelClass.as_class()
 
     //use reflection to get the model class
@@ -64,23 +65,24 @@ fun <T: RealmObject> DisplayModelData(realm: Realm, modelClass: IRealmModel<T>) 
 fun App(realm: Realm) {
     var selectedModelClass by remember { mutableStateOf(UserModel() as IRealmModel<*>) }
     val selectedModelClassName = selectedModelClass.name()
-    val selectedModelClassKClass = selectedModelClass.as_class()
 
     var text by remember { mutableStateOf("") }
 
+    var generation by remember { mutableIntStateOf(0) }
 
     Column {
         Text("Realm Sandbox")
         Text("Selected Model: $selectedModelClassName")
         DropdownMenuExample(realm, selectedModelClass, onModelClassSelection = { selectedModelClass = it })
 
-        DisplayModelData(realm, selectedModelClass)
+        DisplayModelData(realm, selectedModelClass, generation)
 
         TextField(value = text, onValueChange = { text = it })
         Button(onClick = {
             realm.writeBlocking {
                 copyToRealm(selectedModelClass.create_from_text(text))
             }
+            generation++
         }) {
             Text("Add New Entry")
         }
