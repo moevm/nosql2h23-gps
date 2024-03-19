@@ -61,7 +61,6 @@ class MainActivity : ComponentActivity() {
 fun <T: RealmObject> DisplayModelData(realm: Realm, modelClass: IRealmModel<T>, generation: Int) {
     val clazz = modelClass.as_class()
 
-    //use reflection to get the model class
     val results = realm.query(clazz).find()
 
 
